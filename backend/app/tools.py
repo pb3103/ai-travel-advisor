@@ -5,9 +5,6 @@ a hosted search tool and returns its result; it doesn't decide anything on its o
 APIs used, verified directly against their live docs/endpoints before wiring in:
 - Frankfurter (https://frankfurter.dev) for exchange rates — free, no API key, ECB data.
 - Open-Meteo (https://open-meteo.com) for geocoding + weather — free, no API key.
-- OpenRouter's hosted `openrouter:web_search` tool for everything else that needs
-  current, real-world facts (visas, advisories, local info) — reuses the same
-  OpenRouter key already configured, no separate search API key needed.
 """
 
 import httpx
@@ -132,24 +129,6 @@ def get_weather(location: str, date: str | None = None) -> dict:
         return {"error": f"Could not fetch the weather: {exc}"}
 
 
-def web_search(query: str) -> dict:
-    """Search the live web for current travel info (visas, advisories, local requirements)."""
-    try:
-        response = complete_with_tools(
-            model=settings.advisor_model,
-            messages=[{"role": "user", "content": query}],
-            tools=[{"type": "openrouter:web_search", "parameters": {"max_results": 3}}],
-        )
-        message = response.choices[0].message
-        sources = [
-            {"title": annotation.url_citation.title, "url": annotation.url_citation.url}
-            for annotation in (message.annotations or [])
-            if annotation.type == "url_citation"
-        ]
-        return {"answer": message.content, "sources": sources}
-    except Exception as exc:
-        return {"error": f"Web search failed: {exc}"}
-
 
 TOOL_SCHEMAS = [
     {
@@ -222,5 +201,4 @@ TOOL_SCHEMAS = [
 TOOL_HANDLERS = {
     "get_exchange_rate": get_exchange_rate,
     "get_weather": get_weather,
-    "web_search": web_search,
 }
